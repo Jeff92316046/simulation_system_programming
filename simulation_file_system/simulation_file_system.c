@@ -106,34 +106,6 @@ int find_route(int d_or_p){
         temp = root;
     }else{
         temp = cwd;
-        /* for(;;){
-            flag = 0;
-            if(s == NULL){
-                flag = 1;
-                break;
-            }
-            printf("%s\n",s);
-            if(!strcmp(".",s)){ 
-            }
-            else if(!strcmp("..",s)){
-                printf("%p",temp->parentPtr);
-
-                temp = temp->parentPtr;
-            }else{
-                temp = temp->childPtr;
-                for(;temp!=NULL;temp = temp->siblingPtr){
-                    printf("%s %p %s\n",s,temp->siblingPtr,temp->node_name);
-                    if(strcmp(s,temp->node_name) == 0){
-                        flag = 1;
-                        break;
-                    }
-                }
-                if(!flag)break;
-            }
-            printf("%p\n",temp);
-            s = strtok(NULL,"/");
-        }
-        if(flag)return 1; */
     }
     for(;;){
         flag = 0;
