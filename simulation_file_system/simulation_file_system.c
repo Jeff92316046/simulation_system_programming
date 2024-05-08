@@ -4,6 +4,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+typedef struct NODE{
+    char node_name[64]; 
+    char node_type;
+    struct NODE *childPtr;
+    struct NODE *siblingPtr;
+    struct NODE *parentPtr;
+}node;
+
 int menu(char *);
 int mkdir(char *);
 int rmdir(char *);
@@ -15,14 +23,7 @@ int rm(char *);
 int save(char *);
 int reload(char *);
 int quit(char *);
-
-typedef struct NODE{
-    char node_name[64]; 
-    char node_type;
-    struct NODE *childPtr;
-    struct NODE *siblingPtr;
-    struct NODE *parentPtr;
-}node;
+int pwd_r(node *);
 
 int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, save, reload, quit};
 
@@ -48,7 +49,7 @@ void initialize() {
     root = malloc(sizeof(node));
     root->node_type = 'R';
     root->parentPtr = root;
-    strcmp(root->node_name,"root");
+    strcpy(root->node_name,"root");
     root->childPtr = NULL;
     temp = root;
     cwd = root;
@@ -91,13 +92,14 @@ int find_route(int d_or_p){
     char *s;
     bool flag = 0;
     //printf("%s %s\n",dname,bname);
-    if(!strcmp(dname,".")){
-        temp = cwd;
-        return 1;
-    }
+    
 
     if(d_or_p == 0){
         s = strtok(dname,"/");
+        if(!strcmp(dname,".")){
+        temp = cwd;
+        return 1;
+    }
     }else if(d_or_p == 1){
         s = strtok(pathname,"/");
     }
@@ -113,17 +115,17 @@ int find_route(int d_or_p){
             flag = 1;
             break;
         }
-        printf("%s\n",s);
+        //printf("%s\n",s);
         if(!strcmp(".",s)){ 
         }
         else if(!strcmp("..",s)){
-            printf("%p",temp->parentPtr);
+            //printf("%p",temp->parentPtr);
 
             temp = temp->parentPtr;
         }else{
             temp = temp->childPtr;
             for(;temp!=NULL;temp = temp->siblingPtr){
-                printf("%s %p %s\n",s,temp->siblingPtr,temp->node_name);
+                //printf("%s %p %s\n",s,temp->siblingPtr,temp->node_name);
                 if(strcmp(s,temp->node_name) == 0){
                     flag = 1;
                     break;
@@ -131,7 +133,7 @@ int find_route(int d_or_p){
             }
             if(!flag)break;
         }
-        printf("%p\n",temp);
+        //printf("%p\n",temp);
         s = strtok(NULL,"/");
     }
     if(flag)return 1;
@@ -168,13 +170,13 @@ int mkdir(char *pathname){
            Search for basename in (under) the dirname node:
                 if already exists ==> error message and return;
            ADD a new DIR node under dirname. */
-    printf("temp name :%p\n",temp);
+    //printf("temp name :%p\n",temp);
     
     if(temp->childPtr != NULL){
-        printf("child%s %p\n",temp->childPtr->node_name,temp->childPtr);
+        //printf("child%s %p\n",temp->childPtr->node_name,temp->childPtr);
         temp = temp->childPtr;
         for(;;temp = temp->siblingPtr){
-            printf("in");
+           // printf("in");
             if(!strcmp(temp->node_name,bname)){
                 printf("file has exist\n");
                 return -1;
@@ -216,7 +218,7 @@ int rmdir(char *pathname){
            Search for basename in (under) the dirname node:
                 if already exists ==> error message and return;
            ADD a new DIR node under dirname. */
-    printf("temp name :%p\n",temp);
+   // printf("temp name :%p\n",temp);
     int child_flag = 0;
     node *sp_temp = temp;
     if(temp->childPtr != NULL){
@@ -225,12 +227,20 @@ int rmdir(char *pathname){
             printf("in");
             if(child_flag == 0){
                 if(!strcmp(temp->node_name,bname)){
+                    if(temp->childPtr!=NULL){
+                        printf("has child dir,can't remove\n");
+                        return -1;
+                    }
                     sp_temp->childPtr = temp->siblingPtr;
                     return -1;
                 }
                 if(temp->siblingPtr==NULL)break;
             }else{
                 if(!strcmp(temp->node_name,bname)){
+                    if(temp->childPtr!=NULL){
+                        printf("has child dir,can't remove\n");
+                        return -1;
+                    }
                     sp_temp->siblingPtr = temp->siblingPtr;
                     return -1;
                 }
@@ -239,37 +249,41 @@ int rmdir(char *pathname){
             sp_temp = temp;
         }
     }else{
-        printf("dir not exist");
+        printf("dir not exist\n");
     }
     return -1;
 }
 int ls(char *pathname){
-    temp = cwd;
+    int return_code =  find_route(1);
     //printf("%s",temp->childPtr->node_name);
-    if(temp->childPtr != NULL){
-        for(temp = temp->childPtr;temp!=NULL;temp = temp->siblingPtr){
-            printf("%s %p\n",temp->node_name,temp);
+    //printf("t %s %p\n",temp->node_name,temp);
+    if(return_code == 1){
+        if(temp->childPtr != NULL){
+            for(temp = temp->childPtr;temp!=NULL;temp = temp->siblingPtr){
+                //printf("%s %p\n",temp->node_name,temp);
+                printf("%s ",temp->node_name);
+            }
+            printf("\n");
         }
+    }else{
+        printf("dir not exist\n");
     }
     
     //printf("\n");
     return -1;
 }
 int cd(char *pathname){
-    temp = cwd;
-    if(!strcmp(pathname,"..")){
-        cwd = cwd->parentPtr;
-        return -1;
-    }
-    for(temp = temp->childPtr;temp!=NULL;temp = temp->siblingPtr){
-        if(!strcmp(temp->node_name,pathname)){
-            cwd = temp;
-            break;
-        }
-    }
+    int return_code =  find_route(1);
+    if(return_code == 1){
+        cwd = temp; 
+    }else{
+        printf("dir not exist\n");
+    }    
     return -1;
 }
 int pwd(char *pathname){
+    pwd_r(cwd);
+    printf("\n");
     return -1;
 }
 int create(char *pathname){
@@ -286,4 +300,10 @@ int reload(char *pathname){
 }
 int quit(char *pathname){
     return -1;
+}
+int pwd_r(node *now_node){
+    if(now_node->node_type == 'R')return -1;
+
+    pwd_r(now_node->parentPtr);
+    printf("/%s", now_node->node_name);
 }
