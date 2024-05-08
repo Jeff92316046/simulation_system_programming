@@ -95,12 +95,12 @@ int find_route(int d_or_p){
         temp = cwd;
         return 1;
     }
+
     if(d_or_p == 0){
         s = strtok(dname,"/");
     }else if(d_or_p == 1){
         s = strtok(pathname,"/");
     }
-    
 
     if(pathname[0] == '/'){
         temp = root;
@@ -147,7 +147,6 @@ int mkdir(char *pathname){
     //printf("%s\n",bname);
     split_pathname();
     int return_code =  find_route(0);
-
     /*      
      (2). Search for the dirname node:
           ASSOLUTE pathname: search from /
@@ -201,6 +200,47 @@ int menu(char *pathname){
     return -1;
 }
 int rmdir(char *pathname){
+    split_pathname();
+    int return_code =  find_route(0);
+    
+    if(return_code == -1){
+        printf("dir not exist\n");
+        return -1;
+    }else{
+        if(temp->node_type == 'F'){
+            printf("not a dir\n");
+        }
+    }
+    /*
+     (3). (dirname exists and is a DIR):
+           Search for basename in (under) the dirname node:
+                if already exists ==> error message and return;
+           ADD a new DIR node under dirname. */
+    printf("temp name :%p\n",temp);
+    int child_flag = 0;
+    node *sp_temp = temp;
+    if(temp->childPtr != NULL){
+        temp = temp->childPtr;
+        for(;;temp = temp->siblingPtr){
+            printf("in");
+            if(child_flag == 0){
+                if(!strcmp(temp->node_name,bname)){
+                    sp_temp->childPtr = temp->siblingPtr;
+                    return -1;
+                }
+                if(temp->siblingPtr==NULL)break;
+            }else{
+                if(!strcmp(temp->node_name,bname)){
+                    sp_temp->siblingPtr = temp->siblingPtr;
+                    return -1;
+                }
+                if(temp->siblingPtr==NULL)break;
+            }
+            sp_temp = temp;
+        }
+    }else{
+        printf("dir not exist");
+    }
     return -1;
 }
 int ls(char *pathname){
