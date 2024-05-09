@@ -24,8 +24,9 @@ int save(char *);
 int reload(char *);
 int quit(char *);
 int pwd_r(node *);
-
-int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, save, reload, quit};
+int pwd_save(node *);
+int save_travel_tree(node *);
+int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, reload, save, quit};
 
 char *cmd[] =   {"menu", "mkdir", "rmdir", "ls", "cd", "pwd", "create", "rm",
                     "reload", "save", "quit", 0};
@@ -34,6 +35,7 @@ node *root, *cwd,*temp;                           /* root and CWD pointers */
 char line[128];                               /* user input line */
 char command[16], pathname[64];               /* user inputs */
 char dname[64], bname[64];               /* string holders */
+FILE *fp;
 
 int findCmd(char *command)
 {
@@ -57,8 +59,9 @@ void initialize() {
 int main(){
     int id;
     initialize();
-    printf("Enter menu for help menu\n%p\n",root);
-    
+    printf("Enter menu for help menu\n");
+               // open a FILE stream for WRITE
+
     while (1) {
         printf(">");	
         fgets(line, 128, stdin);
@@ -91,11 +94,13 @@ int split_pathname(){
 int find_route(int d_or_p){
     char *s;
     bool flag = 0;
-    //printf("%s %s\n",dname,bname);
+    //printf("%d\n",strcmp(pathname,""));
     
-
     if(d_or_p == 0){
         s = strtok(dname,"/");
+        if(!strcmp(pathname,"")){
+            return -1;
+        }
         if(!strcmp(dname,".")){
         temp = cwd;
         return 1;
@@ -199,6 +204,18 @@ int mkdir(char *pathname){
     }
 }
 int menu(char *pathname){
+    printf("mkdir  pathname  : make a new directiry for a given pathname\n\
+rmdir  pathname  : rm the directory, if it is empty.\n\
+cd    [pathname] : change CWD to pathname, or to / if no pathname.\n\
+ls    [pathname] : list the directory contents of pathname or CWD\n\
+pwd              : print the (absolute) pathname of CWD\n\
+creat  pathname  : create a FILE node.\n\
+rm     pathname  : rm a FILE node.\n\
+save   filename  : save the current file system tree in a file\n\
+reload filename  : re-initalize the file system tree from a file\n\
+quit             : save the file system tree, then terminate the program.\n");
+     /* {"menu", "mkdir", "rmdir", "ls", "cd", "pwd", "create", "rm",
+                    "reload", "save", "quit", 0}; */
     return -1;
 }
 int rmdir(char *pathname){
@@ -224,15 +241,21 @@ int rmdir(char *pathname){
     if(temp->childPtr != NULL){
         temp = temp->childPtr;
         for(;;temp = temp->siblingPtr){
-            printf("in");
+            //printf("in");
             if(child_flag == 0){
                 if(!strcmp(temp->node_name,bname)){
-                    if(temp->childPtr!=NULL){
-                        printf("has child dir,can't remove\n");
+                    if(temp->node_type == 'D'){
+                        if(temp->childPtr!=NULL){
+                            printf("has child dir,can't remove\n");
+                            return -1;
+                        }
+                        sp_temp->childPtr = temp->siblingPtr;
+                        free(temp);
+                        return -1;
+                    }else{
+                        printf("not a dir\n");
                         return -1;
                     }
-                    sp_temp->childPtr = temp->siblingPtr;
-                    return -1;
                 }
                 if(temp->siblingPtr==NULL)break;
             }else{
@@ -242,10 +265,12 @@ int rmdir(char *pathname){
                         return -1;
                     }
                     sp_temp->siblingPtr = temp->siblingPtr;
+                    free(temp);
                     return -1;
                 }
                 if(temp->siblingPtr==NULL)break;
             }
+            child_flag++;
             sp_temp = temp;
         }
     }else{
@@ -261,21 +286,24 @@ int ls(char *pathname){
         if(temp->childPtr != NULL){
             for(temp = temp->childPtr;temp!=NULL;temp = temp->siblingPtr){
                 //printf("%s %p\n",temp->node_name,temp);
-                printf("%s ",temp->node_name);
+                printf("%-11s%-12s\n",temp->node_type == 'F' ? "file" : "directory",temp->node_name);
+                //printf("%s %s\n",temp->node_name,temp->node_type);
             }
-            printf("\n");
         }
     }else{
         printf("dir not exist\n");
     }
-    
     //printf("\n");
     return -1;
 }
 int cd(char *pathname){
     int return_code =  find_route(1);
     if(return_code == 1){
-        cwd = temp; 
+        if(temp->node_type!='F'){
+            cwd = temp; 
+        }else{
+            printf("not a dir\n");
+        }  
     }else{
         printf("dir not exist\n");
     }    
@@ -287,23 +315,141 @@ int pwd(char *pathname){
     return -1;
 }
 int create(char *pathname){
+    split_pathname();
+    int return_code =  find_route(0);
+
+    if(return_code == -1){
+        printf("dir not exist\n");
+        return -1;
+    }else{
+        if(temp->node_type == 'F'){
+            printf("not a dir\n");
+            return -1;
+        }
+    }
+    
+    if(temp->childPtr != NULL){
+        //printf("child%s %p\n",temp->childPtr->node_name,temp->childPtr);
+        temp = temp->childPtr;
+        for(;;temp = temp->siblingPtr){
+           // printf("in");
+            if(!strcmp(temp->node_name,bname)){
+                printf("file has exist\n");
+                return -1;
+            }
+            if(temp->siblingPtr==NULL)break;
+        }
+        temp->siblingPtr = malloc(sizeof(node));
+        strcpy(temp->siblingPtr->node_name,bname);
+        temp->siblingPtr->node_type = 'F';
+        temp->siblingPtr->siblingPtr = NULL;
+        temp->siblingPtr->childPtr = NULL;
+        temp->siblingPtr->parentPtr = temp->parentPtr;
+    }else{
+        temp->childPtr = malloc(sizeof(node));
+        strcpy(temp->childPtr->node_name,bname);
+        temp->childPtr->node_type = 'F';
+        temp->childPtr->childPtr = NULL;
+        temp->childPtr->siblingPtr = NULL;
+        temp->childPtr->parentPtr = temp;
+    }
     return -1;
 }
 int rm(char *pathname){
+    split_pathname();
+    int return_code =  find_route(0);
+    
+    if(return_code == -1){
+        printf("dir not exist\n");
+        return -1;
+    }else{
+        if(temp->node_type == 'F'){
+            printf("not a dir\n");
+            return -1;
+        }
+    }
+
+    node *sp_temp = temp;
+    if(temp->childPtr != NULL){
+        temp = temp->childPtr;
+        for(;;temp = temp->siblingPtr){
+            //printf("in");
+            if(!strcmp(temp->node_name,bname)){
+                if(temp->node_type == 'F'){
+                    if(temp->childPtr!=NULL){
+                        printf("has child dir,can't remove\n");
+                        return -1;
+                    }
+                    sp_temp->childPtr = temp->siblingPtr;
+                    free(temp);
+                    return -1;
+                }else{
+                    printf("not a dir\n");
+                    return -1;
+                }
+            }
+            if(temp->siblingPtr==NULL)break;
+            sp_temp = temp;
+        }
+    }else{
+        printf("dir not exist\n");
+    }
     return -1;
 }
 int save(char *pathname){
+    //printf("%s",pathname);
+    fp = fopen(pathname, "w+");
+    if(fp == NULL){
+        printf("not find file\n");
+        return -1;
+    }
+    save_travel_tree(root->childPtr);
+    fclose(fp);
+    fflush(fp);
     return -1;
 }
 int reload(char *pathname){
+    fp = fopen(pathname,"r");
+    if(fp == NULL){
+        printf("not find file\n");
+        return -1;
+    }
+    char temp_type;
+    for(;;){
+        int scan_value = fscanf(fp,"%c %s\n",&temp_type,pathname);
+        if(scan_value == EOF)break;
+        if(temp_type == 'F'){
+            create(pathname);
+        }else if(temp_type == 'D'){
+            mkdir(pathname);
+        }
+    }
+    printf("reload succssed\n");
     return -1;
 }
 int quit(char *pathname){
+    exit(1);
     return -1;
 }
 int pwd_r(node *now_node){
     if(now_node->node_type == 'R')return -1;
-
     pwd_r(now_node->parentPtr);
-    printf("/%s", now_node->node_name);
+    printf("save succssed\n");
+    //printf("/%s", now_node->node_name);
+}
+int save_travel_tree(node *now_node){
+    //printf("%p\n",now_node);
+    if(now_node == NULL) return -1;
+    fprintf(fp,"%c ",now_node->node_type);
+    pwd_save(now_node);
+    fprintf(fp,"\n");
+    //printf("\n");
+    save_travel_tree(now_node->childPtr);
+    save_travel_tree(now_node->siblingPtr);
+}
+int pwd_save(node *now_node){
+    if(now_node->node_type == 'R')return -1;
+    pwd_save(now_node->parentPtr);
+    fprintf(fp,"/%s", now_node->node_name);
+    //printf("/%s", now_node->node_name);
 }
