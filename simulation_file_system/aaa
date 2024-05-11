@@ -1,0 +1,10 @@
+D /a
+D /a/c
+D /a/b
+D /a/b/c
+F /a/b/c/d
+F /a/d
+D /b
+D /b/e
+D /c
+F /d

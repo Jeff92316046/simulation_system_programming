@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+//重要事項!!!!!!
+//tree 在windows跑會有亂碼
+//可能是mingw的鍋?
 typedef struct NODE{
     char node_name[64]; 
     char node_type;
@@ -26,6 +29,7 @@ int quit(char *);
 int pwd_r(node *);
 int pwd_save(node *);
 int save_travel_tree(node *);
+int free_travel_tree(node *);
 int print_tree(node *);
 int tree(char *);
 int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, reload, save,tree, quit };
@@ -216,6 +220,7 @@ creat  pathname  : create a FILE node.\n\
 rm     pathname  : rm a FILE node.\n\
 save   filename  : save the current file system tree in a file\n\
 reload filename  : re-initalize the file system tree from a file\n\
+tree             : use tree structure to present file structure\n\
 quit             : save the file system tree, then terminate the program.\n");
      /* {"menu", "mkdir", "rmdir", "ls", "cd", "pwd", "create", "rm",
                     "reload", "save", "quit", 0}; */
@@ -313,6 +318,10 @@ int cd(char *pathname){
     return -1;
 }
 int pwd(char *pathname){
+    if(cwd == root){
+        printf("/\n");
+        return -1;
+    }
     pwd_r(cwd);
     printf("\n");
     return -1;
@@ -418,6 +427,8 @@ int reload(char *pathname){
         return -1;
     }
     char temp_type;
+    cwd = root;
+    free_travel_tree(root->childPtr);
     for(;;){
         int scan_value = fscanf(fp,"%c %s\n",&temp_type,pathname);
         if(scan_value == EOF)break;
@@ -432,6 +443,7 @@ int reload(char *pathname){
 }
 int tree(char * pathname)
 {
+    printf(".\n");
     print_tree(root->childPtr);
     return -1;
 }
@@ -442,8 +454,8 @@ int quit(char *pathname){
 int pwd_r(node *now_node){
     if(now_node->node_type == 'R')return -1;
     pwd_r(now_node->parentPtr);
-    printf("save succssed\n");
-    //printf("/%s", now_node->node_name);
+    //printf("save succssed\n");
+    printf("/%s", now_node->node_name);
 }
 int save_travel_tree(node *now_node){
     //printf("%p\n",now_node);
@@ -463,19 +475,41 @@ int pwd_save(node *now_node){
 }
 
 int print_tree(node *now_node){
-    char *s="├── ",*s1="|     ",*s2="└── ";
+    char *s="├── ",*s1="│   ",*s2="└── ",*s3="    ";
 	int i;
     if(now_node==NULL)return -1;
-    
-    for(i=0;i<(count-1);i++)
-        printf("%s",s1);
+    if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s1);
+    else if(count>0 && now_node->siblingPtr==NULL) printf("%s",s1);
+    else if(count==0 && now_node->siblingPtr!=NULL)printf("%s",s);
+    else if(count==0 && now_node->siblingPtr==NULL)printf("%s",s2);
+    for(i=0;i<(count-1);i++){
+        node *count_temp = now_node;
+        for(int j=i;j<(count-1);j++){
+            count_temp = count_temp->parentPtr;
+        }
+        //printf(count_temp->node_name);
+        if(count_temp->siblingPtr!=NULL){
+            printf("%s",s1);
+        }else{
+            printf("%s",s3);
+        }  
+    }   
     if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s);
-    else printf("%s",s2);
+    else if(count>0 && now_node->siblingPtr==NULL) printf("%s",s2);
     printf("%s",now_node->node_name);
     printf("\n");
     count++;
     print_tree(now_node->childPtr);
     count--;
-
     print_tree(now_node->siblingPtr);	
+}
+
+int free_travel_tree(node *now_node){
+    //printf("%p\n",now_node);
+    if(now_node == NULL) return -1;
+    free_travel_tree(now_node->childPtr);
+    free_travel_tree(now_node->siblingPtr);
+    //print_tree(root->childPtr);
+    free(now_node);
+    //printf("\n");
 }
