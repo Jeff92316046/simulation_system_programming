@@ -26,15 +26,18 @@ int quit(char *);
 int pwd_r(node *);
 int pwd_save(node *);
 int save_travel_tree(node *);
-int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, reload, save, quit};
+int print_tree(node *);
+int tree(char *);
+int (*fptr[ ])(char *) = {(int (*)())menu, mkdir, rmdir, ls, cd, pwd, create, rm, reload, save,tree, quit };
 
 char *cmd[] =   {"menu", "mkdir", "rmdir", "ls", "cd", "pwd", "create", "rm",
-                    "reload", "save", "quit", 0};
+                    "reload", "save", "tree" ,"quit", 0};
 
 node *root, *cwd,*temp;                           /* root and CWD pointers */
 char line[128];                               /* user input line */
 char command[16], pathname[64];               /* user inputs */
 char dname[64], bname[64];               /* string holders */
+int count = 0;
 FILE *fp;
 
 int findCmd(char *command)
@@ -427,6 +430,11 @@ int reload(char *pathname){
     printf("reload succssed\n");
     return -1;
 }
+int tree(char * pathname)
+{
+    print_tree(root->childPtr);
+    return -1;
+}
 int quit(char *pathname){
     exit(1);
     return -1;
@@ -452,4 +460,22 @@ int pwd_save(node *now_node){
     pwd_save(now_node->parentPtr);
     fprintf(fp,"/%s", now_node->node_name);
     //printf("/%s", now_node->node_name);
+}
+
+int print_tree(node *now_node){
+    char *s="├── ",*s1="|     ",*s2="└── ";
+	int i;
+    if(now_node==NULL)return -1;
+    
+    for(i=0;i<(count-1);i++)
+        printf("%s",s1);
+    if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s);
+    else printf("%s",s2);
+    printf("%s",now_node->node_name);
+    printf("\n");
+    count++;
+    print_tree(now_node->childPtr);
+    count--;
+
+    print_tree(now_node->siblingPtr);	
 }
