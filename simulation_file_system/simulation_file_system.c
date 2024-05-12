@@ -4,9 +4,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-//重要事項!!!!!!
-//tree 在windows跑會有亂碼
-//可能是mingw的鍋?
 typedef struct NODE{
     char node_name[64]; 
     char node_type;
@@ -443,8 +440,7 @@ int reload(char *pathname){
 }
 int tree(char * pathname)
 {
-    printf(".\n");
-    print_tree(root->childPtr);
+    print_tree(root);
     return -1;
 }
 int quit(char *pathname){
@@ -478,10 +474,10 @@ int print_tree(node *now_node){
     char *s="├── ",*s1="│   ",*s2="└── ",*s3="    ";
 	int i;
     if(now_node==NULL)return -1;
-    if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s1);
-    else if(count>0 && now_node->siblingPtr==NULL) printf("%s",s1);
+    /* if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s1);
+    else if(count>0 && now_node->siblingPtr==NULL) printf("%s",s3);
     else if(count==0 && now_node->siblingPtr!=NULL)printf("%s",s);
-    else if(count==0 && now_node->siblingPtr==NULL)printf("%s",s2);
+    else if(count==0 && now_node->siblingPtr==NULL)printf("%s",s2); */
     for(i=0;i<(count-1);i++){
         node *count_temp = now_node;
         for(int j=i;j<(count-1);j++){
@@ -496,7 +492,11 @@ int print_tree(node *now_node){
     }   
     if(count>0 && now_node->siblingPtr!=NULL)printf("%s",s);
     else if(count>0 && now_node->siblingPtr==NULL) printf("%s",s2);
-    printf("%s",now_node->node_name);
+    if(now_node->node_type == 'R'){
+        printf(".");
+    }else{
+        printf("%s",now_node->node_name);
+    }
     printf("\n");
     count++;
     print_tree(now_node->childPtr);
