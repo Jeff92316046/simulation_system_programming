@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+//重要事項!!!!!!
+//tree 在windows跑會有亂碼
+//可能是mingw的鍋?
+
 typedef struct NODE{
     char node_name[64]; 
     char node_type;
