@@ -109,8 +109,12 @@ int kexit(int value)
   }
   /* 如果目前process的parent狀態是sleep則
 	呼叫kwakeup(目前process->parent->event)來喚醒父process */
+  if(running->parent->status == SLEEP){
+    kwakeup(running->parent->event);
+  }
   // 呼叫tswitch釋出CPU
-} 
+  tswitch();
+}
 
 int do_fork(void)
 {
@@ -136,18 +140,26 @@ char *pstatus[]={"FREE   ","READY  ","SLEEP  ","ZOMBIE ", "RUNNING"};
 int do_exit(void)
 {
   // 宣告一個int用來存exitCode的值
-  
+  int exitCode;
   /* 如果目前process的pid = 1則回報錯誤
 	process 1 不會被exit(記得return不然後面會繼續跑) */
-  
+  if(running->pid == 1){
+    printf("p1 never die\n");
+    return -1;
+  }
   // 印字串要求使用者輸入exit code的值
   // scanf
+  printf("input exit code value\n");
+  scanf("%d",&exitCode);
+
   /* 以下兩行code接在scanf後可以用來清除buffer
 	(使用者多輸入時造成buffer沒清空，導致下次scanf會先從buffer裡找值)
   int c;
   while ((c = getchar()) != '\n' && c != EOF) {} */
-  
+  int c;
+  while ((c = getchar()) != '\n' && c != EOF) {}
   // 呼叫kexit(exitCode的值)
+  kexit(exitCode);
 } 
 
 int do_ps(void)
@@ -170,48 +182,76 @@ int do_sleep(void){
 	
 	/* 如果目前process的pid = 1則回報錯誤
 	process 1 不會被sleep"指令"改變狀態(不是不會sleep)(記得return不然後面會繼續跑) */
-	
+	if(running->pid == 1){
+    printf("p1 never sleep\n");
+    return -1;
+  }
 	// 宣告一個int用來存event的值
 	// 印字串要求使用者輸入event的值
 	// scanf
+  int event_code;
+  printf("input event code\n");
+  scanf("%d",&event_code);
 	/* 以下兩行code接在scanf後可以用來清除buffer
 		(使用者多輸入時造成buffer沒清空，導致下次scanf會先從buffer裡找值)
 	int c;
 	while ((c = getchar()) != '\n' && c != EOF) {} */
-	
+	int c;
+	while ((c = getchar()) != '\n' && c != EOF) {}
 	// 呼叫ksleep(event的值)
+  ksleep(event_code);
 }
 
 int do_wakeup(void){
 	// 宣告一個int用來存event的值
 	// 印字串要求使用者輸入event的值
 	// scanf
+  int event_code;
+  printf("input event code\n");
+  scanf("%s",&event_code);
 	/* 以下兩行code接在scanf後可以用來清除buffer
 		(使用者多輸入時造成buffer沒清空，導致下次scanf會先從buffer裡找值)
 	int c;
 	while ((c = getchar()) != '\n' && c != EOF) {} */
-	
+	int c;
+	while ((c = getchar()) != '\n' && c != EOF) {}
 	// 呼叫kwakeup
+  kwakeup(event_code);
 }
 
 int do_wait(void){
 	// 宣告一個int用來存exitCode的值
 	// 宣告一個int用來存kwait的回傳值並呼叫kwait(&1.宣告的int)
-
+  int exitCode;
+  int retrun_value = kwait(&exitCode);
 	/* 如果回傳值 < 0則回報錯誤，不存在子process
 		如果回傳值 > 0則告知使用者該zombie child已經free */
+  if(retrun_value<0){
+    printf("child process not exist\n");
+    return -1;
+  }else if(retrun_value > 0){
+    printf("zombie child has free\n");
+    return 1;
+  }
 }
 
 int ksleep(int event){
 	
 	/* 如果目前event的值 <= 0則回報錯誤
 	event的值必須大於0 (記得return不然後面會繼續跑) */
-	
+	if(event <= 0){
+    printf("event code error\n");
+    return -1;
+  }
 	// 將目前process的event設為傳進此函數的event值
 	// 將目前process的狀態設為SLEEP
-
+  running->event = event;
+  running->status = SLEEP;
 	// 將目前process放進sleep list(方法參考77行)
+  enqueue(&sleepList, running);
 	// 呼叫tswitch釋出CPU
+  tswitch();
+
 }
 
 int kwakeup(int event){		
@@ -219,12 +259,20 @@ int kwakeup(int event){
 	/* 根據傳進函數event的值來決定要改變哪個process的狀態(或找不到)
 		1. 在sleep list中找符合條件的process需要兩個process指標
 		，其中一個指向目前尋找的，另一個指向目前尋找的前一個
-		2. 先將前述所說之兩個指標都先指向sleep list的開頭
+    2. 先將前述所說之兩個指標都先指向sleep list的開頭
+  */
+  PROC *target = sleepList;
+  PROC *pre_target = sleepList; 
+  /*
 		3. 宣告一個bool型態紀錄使否有在sleep list中找到event值，初始為找不到
 		4. 如果目前尋找的process的event值等於要尋找的event值則
 		分為以下兩種情形，宣告一個bool型態紀錄是(1)還是(2)
 			(1). 找到的process是sleep list的開頭
 			(2). 找到的process不是sleep list的開頭
+  */
+  bool has_event = false;
+  bool is_first = true;
+  /*
 		--5. 如果是(1)，則呼叫dequeue(方法參考46行)
 		   如果是(2)，尋找到的process的前一個process(在1. 中宣告)，
 			   其下一個process指向找到的process的下一個process
@@ -238,19 +286,83 @@ int kwakeup(int event){
 			將找到的process設為list中的下一個process
 			跳回到3.做判斷直到已經指到list中的底部
 		11. 如果都沒找到(根據3.)回報使用者錯誤 */
+  for(;;){
+    if(target->event == event){
+      if(is_first){
+        target = dequeue(&sleepList);
+      }else{
+        pre_target->next = target->next;
+      }
+      enqueue(&readyQueue,target);
+      target->event = 0;
+      target->status = READY;
+      has_event = true;
+      printf("you should wakeup the process\n");
+      if(is_first){
+        target = sleepList;
+        pre_target = sleepList;
+        is_first = true;
+      }else{
+        target = target->next;
+      }
+    }else{
+      if(target->next == NULL)break;
+      pre_target = target;
+      target = target->next;
+    }
+  }
+  if(!has_event){
+    printf("not find event code\n");
+    return -1;
+  }else{
+    return 1;
+  }
 }
 
 int kwait(int *status){
 	// 如果目前process沒有chlid則return -1
-	
+	if(running->child == NULL) return -1;
 	/* 在目前process中尋找是否有child process狀態是ZOMBIE(或找不到)
 		1. 找符合條件的process需要兩個process指標
 		，其中一個指向目前尋找的，另一個指向目前尋找的前一個
-		2. 先將前述所說之兩個指標都先指向目前process的child
+    2. 先將前述所說之兩個指標都先指向目前process的child
+  */
+  PROC *target = running->child;
+  PROC *pre_target = running->child;
+  /*
 		3. 如果目前尋找的process的狀態等於ZOMBIE則
 		3-1. 先宣告一個int保存找到的process的pid
+  */
+  int pid_temp;  
+  /*
 		3-2. 將傳進來的參數status指向找到的process的exitCode(*status = 名稱->exitCode)
 		3-3. 將尋找到的process狀態設為FREE
+  */
+  bool is_first = true;
+  
+  for(;;){
+    pid_temp = target->pid;
+    if(target->status == ZOMBIE){
+      *status = target->exitCode;
+      target->status = FREE;
+      if(is_first){
+        running->child = target->sibling;
+      }else{
+        pre_target->sibling = target->sibling;
+      }
+      target->parent = NULL;
+      target->sibling = NULL;
+      target->ppid = 0;
+      enqueue(&freeList,target);
+      return pid_temp;
+    }else{
+      if(target->sibling == NULL)break;
+      pre_target = target;
+      target = target->sibling;
+    }
+
+  }
+  /*
 		3-4. 再分為以下兩種情形
 			(1). 找到的process是目前process第一個child
 			(2). 找到的process不是目前process第一個child
@@ -266,7 +378,8 @@ int kwait(int *status){
 			將找到的process設為其sibling
 			跳回到3.做判斷直到已經指到NULL(0)
 		*/
-	
+	ksleep(ZOMBIE);
+  return 0;
 	/* 如果沒有child狀態是ZOMBIE則將目前的process設為sleep
 		1. 呼叫ksleep(ZOMBIE) 
 		2. return 0 */
