@@ -84,24 +84,31 @@ int kexit(int value)
   // 將目前的process的exitCode設為value
   // 將目前的process的狀態設為zombie
   // 將目前的process優先度設為0
-  
+  running->exitCode = value;
+  running->status = ZOMBIE;
+  running->priority = 0;
   /* 把目前process的所有子process接到目前process的父process上
 	1. 紀錄process 1 的第一個child
 		(宣告 PROC* 變數名稱 = &proc[1]; 變數名稱 = 變數名稱->child;)
 	2. 將前一步的process指向下一個sibling直到process的sibling = NULL(0) 
 		(此時該process指向process 1的最後一個子process)
 	3. 將前一步process的sibling接上目前process的child */
-  
+  PROC* temp_now_child =&proc[1];
+  for(temp_now_child = temp_now_child->child;temp_now_child->sibling!=NULL;temp_now_child =temp_now_child->sibling);
+  temp_now_child->sibling = running->child;
+
   /* 將所有目前process的child，其parent設為process 1
 	1. 紀錄目前process的第一個child
 	2. 將前一步process的parent改為process 1(&proc[1])
 	3. 同上一步，將process的ppid設為1
 	4. 指向下一個sibing
 	5. 循環直到沒有其他的sibling */
-  
+  for(temp_now_child = running->child;temp_now_child->sibling!=NULL;temp_now_child = temp_now_child->sibling){
+    temp_now_child->parent = &proc[1];
+    temp_now_child->ppid = 1;
+  }
   /* 如果目前process的parent狀態是sleep則
 	呼叫kwakeup(目前process->parent->event)來喚醒父process */
-  
   // 呼叫tswitch釋出CPU
 } 
 
