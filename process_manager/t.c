@@ -10,6 +10,7 @@ int do_switch(void);
 int do_fork(void);
 int do_ps(void);
 int do_exit(void);
+int do_shutdown(void);
 int kexit(int value);
 int kfork(int (*func)(void));
 int body(void);
@@ -30,9 +31,9 @@ PROC *running;			//current running proc pointer
 
 #include "queue.c"
 
-char *cmds[ ] =  {"ps",  "fork",  "switch",  "exit",  "sleep",  "wakeup",   "wait",  0};
+char *cmds[ ] =  {"ps",  "fork",  "switch",  "exit",  "sleep",  "wakeup",   "wait", "shutdown", 0};
 
-int (*fptr[ ])()={ do_ps, do_fork, do_switch, do_exit, do_sleep, do_wakeup,  do_wait  };
+int (*fptr[ ])()={ do_ps, do_fork, do_switch, do_exit, do_sleep, do_wakeup,  do_wait, do_shutdown };
 
 /*******************************************************
 kfork() creates a child process; returns child pid.
@@ -94,19 +95,24 @@ int kexit(int value)
 		(此時該process指向process 1的最後一個子process)
 	3. 將前一步process的sibling接上目前process的child */
   PROC* temp_now_child =&proc[1];
-  for(temp_now_child = temp_now_child->child;temp_now_child->sibling!=NULL;temp_now_child =temp_now_child->sibling);
-  temp_now_child->sibling = running->child;
 
+  if(temp_now_child->child!=NULL){
+    for(temp_now_child = temp_now_child->child;temp_now_child->sibling!=NULL;temp_now_child =temp_now_child->sibling);
+    temp_now_child->sibling = running->child;
+  }
   /* 將所有目前process的child，其parent設為process 1
 	1. 紀錄目前process的第一個child
 	2. 將前一步process的parent改為process 1(&proc[1])
 	3. 同上一步，將process的ppid設為1
 	4. 指向下一個sibing
 	5. 循環直到沒有其他的sibling */
-  for(temp_now_child = running->child;temp_now_child->sibling!=NULL;temp_now_child = temp_now_child->sibling){
-    temp_now_child->parent = &proc[1];
-    temp_now_child->ppid = 1;
+  if(running->child != NULL){
+    for(temp_now_child = running->child ; temp_now_child->sibling!=NULL ; temp_now_child = temp_now_child->sibling){
+      temp_now_child->parent = &proc[1];
+      temp_now_child->ppid = 1;
+    }
   }
+  running->child = NULL;
   /* 如果目前process的parent狀態是sleep則
 	呼叫kwakeup(目前process->parent->event)來喚醒父process */
   if(running->parent->status == SLEEP){
@@ -209,7 +215,7 @@ int do_wakeup(void){
 	// scanf
   int event_code;
   printf("input event code\n");
-  scanf("%s",&event_code);
+  scanf("%d",&event_code);
 	/* 以下兩行code接在scanf後可以用來清除buffer
 		(使用者多輸入時造成buffer沒清空，導致下次scanf會先從buffer裡找值)
 	int c;
@@ -234,6 +240,13 @@ int do_wait(void){
     printf("zombie child has free\n");
     return 1;
   }
+}
+
+int do_shutdown(void){
+  printf("Cleaning processes....\n");
+  for(int i=0;i<10000;i++);
+  printf("System halted.\n");
+  exit(0);
 }
 
 int ksleep(int event){
@@ -290,20 +303,23 @@ int kwakeup(int event){
   for(;;){
     if(target->event == event){
       if(is_first){
-        target = dequeue(&sleepList);
+        dequeue(&sleepList);
       }else{
         pre_target->next = target->next;
       }
+      
       enqueue(&readyQueue,target);
       target->event = 0;
       target->status = READY;
       has_event = true;
-      printf("you should wakeup the process\n");
+      printf("had wakeup process %d\n",target->pid);
       if(is_first){
+        if(sleepList == NULL)break;
         target = sleepList;
         pre_target = sleepList;
         is_first = true;
       }else{
+        if(target->next == NULL)break;
         target = target->next;
       }
     }else{
@@ -402,10 +418,10 @@ int body(void)
 	puts("NULL");
 
     printList("freeList ", freeList);
-	printList("sleepList", sleepList);
-    printList("readQueue", readyQueue);
+	  printList("sleepList", sleepList);
+    printList("readyQueue", readyQueue);
     printProcessTree(&proc[0],0);
-    printf("input a command: [ps|fork|switch|exit|sleep|wakeup|wait] : ");
+    printf("input a command: [ps|fork|switch|exit|sleep|wakeup|wait|shutdown] : ");
     fgets(command, 64, stdin);
     command[strlen(command)-1] = 0;
 	
