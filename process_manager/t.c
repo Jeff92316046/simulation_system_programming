@@ -137,6 +137,7 @@ int do_switch(void)
 
 char *pstatus[]={"FREE   ","READY  ","SLEEP  ","ZOMBIE ", "RUNNING"};
 
+#include "tree.c"
 int do_exit(void)
 {
   // 宣告一個int用來存exitCode的值
@@ -403,7 +404,7 @@ int body(void)
     printList("freeList ", freeList);
 	printList("sleepList", sleepList);
     printList("readQueue", readyQueue);
-    
+    printProcessTree(&proc[0],0);
     printf("input a command: [ps|fork|switch|exit|sleep|wakeup|wait] : ");
     fgets(command, 64, stdin);
     command[strlen(command)-1] = 0;
