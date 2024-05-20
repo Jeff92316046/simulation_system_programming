@@ -107,9 +107,11 @@ int kexit(int value)
 	4. 指向下一個sibing
 	5. 循環直到沒有其他的sibling */
   if(running->child != NULL){
-    for(temp_now_child = running->child ; temp_now_child->sibling!=NULL ; temp_now_child = temp_now_child->sibling){
+    for(temp_now_child = running->child ;  ; temp_now_child = temp_now_child->sibling){
+      if(temp_now_child==NULL)break;
       temp_now_child->parent = &proc[1];
       temp_now_child->ppid = 1;
+      //printf("%d %d",temp_now_child->pid,temp_now_child->ppid);
     }
   }
   running->child = NULL;
