@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-//#include <unistd.h>
+//#include <Windows.h> // for windows
+#include <unistd.h> //for unix(linux or mac)
+
 int findCmd(char*);
 void tswitch(void);
 int do_switch(void);
@@ -246,7 +248,7 @@ int do_wait(void){
 
 int do_shutdown(void){
   printf("Cleaning processes....\n");
-  for(int i=0;i<100000;i++);
+  sleep(2);
   printf("System halted.\n");
   exit(0);
 }
