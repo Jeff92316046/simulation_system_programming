@@ -377,7 +377,7 @@ int kwait(int *status){
       pre_target = target;
       target = target->sibling;
     }
-
+    is_first = false;
   }
   /*
 		3-4. 再分為以下兩種情形
