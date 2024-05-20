@@ -330,7 +330,9 @@ int kwakeup(int event){
       if(target->next == NULL)break;
       pre_target = target;
       target = target->next;
+      is_first = false;
     }
+    
   }
   if(!has_event){
     printf("not find event code\n");
