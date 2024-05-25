@@ -401,7 +401,11 @@ int kwait(int *status){
 			將找到的process設為其sibling
 			跳回到3.做判斷直到已經指到NULL(0)
 		*/
-	ksleep(ZOMBIE);
+  if(running != &proc[1]){
+    ksleep(ZOMBIE);
+  }else{
+    printf("p1 never sleep\n");
+  }
   return 0;
 	/* 如果沒有child狀態是ZOMBIE則將目前的process設為sleep
 		1. 呼叫ksleep(ZOMBIE) 
